@@ -32,7 +32,7 @@ class LayananScanController extends Controller
     {
         $request->validate([
             'nama_layanan' => 'required|string|max:255',
-            'kode_layanan' => 'required|string|unique:layanan_scan,kode_layanan',
+            'kode_layanan' => 'required|string|unique:layanan_scans,kode_layanan',
         ]);
 
         $layanan = LayananScan::create([
