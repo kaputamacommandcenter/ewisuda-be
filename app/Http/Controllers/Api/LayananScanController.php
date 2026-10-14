@@ -83,20 +83,43 @@ class LayananScanController extends Controller
         ], 200);
     }
 
-    /**
-     * Proses scanning multifungsi & pencatatan waktu scan
-     */
+    public function checkCode($code)
+    {
+        $code = trim($code);
+        $tamu = TamuUndangan::where('unique_code', $code)->first();
+
+        if (!$tamu) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kode unik tidak valid atau tamu tidak ditemukan.',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Data tamu ditemukan.',
+            'data'    => [
+                'id'          => $tamu->id,
+                'nama'        => $tamu->nama,
+                'instansi'    => $tamu->instansi ?? $tamu->instansi_jabatan ?? '-',
+                'unique_code' => $tamu->unique_code,
+            ]
+        ], 200);
+    }
+
     public function processScan(Request $request)
     {
         $request->validate([
             'unique_code'     => 'required|string',
             'layanan_scan_id' => 'required|exists:layanan_scans,id',
+            'keterangan'      => 'nullable|string|max:500',
         ]);
 
         $code = trim($request->unique_code);
         $layananId = $request->layanan_scan_id;
+        $keterangan = $request->keterangan ? trim($request->keterangan) : null;
 
-        // 1. Cari data tamu berdasarkan unique_code
+        // Cari tamu berdasarkan unique_code
         $tamu = TamuUndangan::where('unique_code', $code)->first();
 
         if (!$tamu) {
@@ -108,7 +131,7 @@ class LayananScanController extends Controller
 
         $layanan = LayananScan::findOrFail($layananId);
 
-        // 2. Cek apakah tamu sudah pernah scan untuk layanan ini
+        // Cek apakah tamu sudah pernah scan untuk layanan ini
         $sudahScan = RiwayatScan::where('tamu_undangan_id', $tamu->id)
             ->where('layanan_scan_id', $layananId)
             ->first();
@@ -127,24 +150,26 @@ class LayananScanController extends Controller
                     'unique_code'  => $tamu->unique_code,
                     'nama_layanan' => $layanan->nama_layanan,
                     'waktu_scan'   => $waktuExisting,
+                    'keterangan'   => $sudahScan->keterangan ?? '-',
                 ]
             ], 400);
         }
 
-        // 3. WAKTU AKTUAM PENCATATAN SCAN
+        // Catat Waktu Aktual
         $now = Carbon::now('Asia/Jakarta');
 
-        // 4. SIMPAN KETABAL RIWAYAT_SCAN (Memastikan field waktu_scan terisi)
-        RiwayatScan::create([
+        // Simpan ke RiwayatScan dengan Keterangan
+        $riwayat = RiwayatScan::create([
             'tamu_undangan_id' => $tamu->id,
             'layanan_scan_id'  => $layanan->id,
             'waktu_scan'       => $now->toDateTimeString(),
+            'keterangan'       => $keterangan,
         ]);
 
-        // 5. Jika jenis layanannya adalah "Kehadiran Utama", update juga tabel tamu_undangan
+        // Jika Layanan adalah Kehadiran Utama, update juga tabel tamu_undangan
         if (strtoupper($layanan->kode_layanan) === 'KEHADIRAN' || $layananId == 1) {
             $tamu->update([
-                'is_hadir'        => true,
+                'is_hadir'         => true,
                 'status_kehadiran' => 'Hadir',
                 'waktu_hadir'      => $now->toDateTimeString(),
             ]);
@@ -159,6 +184,7 @@ class LayananScanController extends Controller
                 'unique_code'  => $tamu->unique_code,
                 'nama_layanan' => $layanan->nama_layanan,
                 'waktu_scan'   => $now->format('H:i') . ' WIB',
+                'keterangan'   => $keterangan ?? '-',
             ]
         ], 200);
     }

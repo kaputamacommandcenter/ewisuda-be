@@ -12,6 +12,7 @@ class RiwayatScan extends Model
         'tamu_undangan_id',
         'layanan_scan_id',
         'waktu_scan',
+        'keterangan',
     ];
 
     protected $casts = [

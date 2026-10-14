@@ -64,6 +64,8 @@ Route::middleware('auth:sanctum')->group(
                 Route::get('tamu-undangan/acara/{acaraId}', [TamuUndanganController::class, 'getByAcara']);
                 Route::post('tamu-undangan/sync-wisudawan/{eventId}', [TamuUndanganController::class, 'syncWisudawan']);
                 Route::apiResource('tamu-undangan', TamuUndanganController::class)->except(['index', 'show']);
+                Route::get('/tamu-undangan/check/{code}', [LayananScanController::class, 'checkCode']);
+                Route::post('/tamu-undangan/presensi', [LayananScanController::class, 'processScan']);
 
                 // --- Riwayat Scan ---
                 Route::get('/riwayat-scan/{eventId}', [RiwayatScanController::class, 'index']);
@@ -78,5 +80,6 @@ Route::middleware('auth:sanctum')->group(
         // --- Layanan Scan & Presensi ---
         Route::get('/layanan-scan', [LayananScanController::class, 'index']);
         Route::post('/tamu-undangan/presensi', [LayananScanController::class, 'processScan']);
+        Route::get('/scan-history/get-by-acara', [RiwayatScanController::class, 'getByAcara']);
     }
 );
