@@ -32,7 +32,7 @@ class LayananScanController extends Controller
     {
         $request->validate([
             'nama_layanan' => 'required|string|max:255',
-            'kode_layanan' => 'required|string|unique:layanan_scans,kode_layanan',
+            'kode_layanan' => 'required|string|unique:layanan_scan,kode_layanan',
         ]);
 
         $layanan = LayananScan::create([
@@ -84,12 +84,12 @@ class LayananScanController extends Controller
     }
 
     /**
-     * Proses scanning multifungsi
+     * Proses scanning multifungsi & pencatatan waktu scan
      */
     public function processScan(Request $request)
     {
         $request->validate([
-            'unique_code' => 'required|string',
+            'unique_code'     => 'required|string',
             'layanan_scan_id' => 'required|exists:layanan_scans,id',
         ]);
 
@@ -114,33 +114,39 @@ class LayananScanController extends Controller
             ->first();
 
         if ($sudahScan) {
+            $waktuExisting = $sudahScan->waktu_scan
+                ? Carbon::parse($sudahScan->waktu_scan)->setTimezone('Asia/Jakarta')->format('H:i') . ' WIB'
+                : Carbon::parse($sudahScan->created_at)->setTimezone('Asia/Jakarta')->format('H:i') . ' WIB';
+
             return response()->json([
                 'success' => false,
                 'message' => "Tamu ini sudah melakukan scan untuk layanan {$layanan->nama_layanan}.",
                 'data' => [
-                    'nama' => $tamu->nama,
-                    'instansi' => $tamu->instansi ?? '-',
-                    'unique_code' => $tamu->unique_code,
+                    'nama'         => $tamu->nama,
+                    'instansi'     => $tamu->instansi ?? $tamu->instansi_jabatan ?? '-',
+                    'unique_code'  => $tamu->unique_code,
                     'nama_layanan' => $layanan->nama_layanan,
-                    'waktu_scan' => Carbon::parse($sudahScan->waktu_scan)->format('H:i') . ' WIB',
+                    'waktu_scan'   => $waktuExisting,
                 ]
             ], 400);
         }
 
-        // 3. PROSES SIMPAN KE TABEL RIWAYAT_SCAN
-        $now = Carbon::now();
-        $riwayat = RiwayatScan::create([
+        // 3. WAKTU AKTUAM PENCATATAN SCAN
+        $now = Carbon::now('Asia/Jakarta');
+
+        // 4. SIMPAN KETABAL RIWAYAT_SCAN (Memastikan field waktu_scan terisi)
+        RiwayatScan::create([
             'tamu_undangan_id' => $tamu->id,
             'layanan_scan_id'  => $layanan->id,
-            'waktu_scan'       => $now,
+            'waktu_scan'       => $now->toDateTimeString(),
         ]);
 
-        // 4. Jika jenis layanannya adalah "Kehadiran Utama", update juga tabel tamu_undangan
-        if (strtoupper($layanan->kode_layanan) === 'KEHADIRAN') {
+        // 5. Jika jenis layanannya adalah "Kehadiran Utama", update juga tabel tamu_undangan
+        if (strtoupper($layanan->kode_layanan) === 'KEHADIRAN' || $layananId == 1) {
             $tamu->update([
-                'is_hadir' => true,
+                'is_hadir'        => true,
                 'status_kehadiran' => 'Hadir',
-                'waktu_hadir' => $now,
+                'waktu_hadir'      => $now->toDateTimeString(),
             ]);
         }
 
@@ -148,11 +154,11 @@ class LayananScanController extends Controller
             'success' => true,
             'message' => "Scan {$layanan->nama_layanan} berhasil dicatat.",
             'data' => [
-                'nama' => $tamu->nama,
-                'instansi' => $tamu->instansi ?? '-',
-                'unique_code' => $tamu->unique_code,
+                'nama'         => $tamu->nama,
+                'instansi'     => $tamu->instansi ?? $tamu->instansi_jabatan ?? '-',
+                'unique_code'  => $tamu->unique_code,
                 'nama_layanan' => $layanan->nama_layanan,
-                'waktu_scan' => $now->format('H:i') . ' WIB',
+                'waktu_scan'   => $now->format('H:i') . ' WIB',
             ]
         ], 200);
     }
