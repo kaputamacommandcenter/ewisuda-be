@@ -9,11 +9,6 @@ use App\Http\Controllers\Api\TamuUndanganController;
 use App\Http\Controllers\Api\LayananScanController;
 use App\Http\Controllers\Api\RiwayatScanController;
 
-/*
-|--------------------------------------------------------------------------
-| Public Routes (Tanpa Auth)
-|--------------------------------------------------------------------------
-*/
 
 Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);

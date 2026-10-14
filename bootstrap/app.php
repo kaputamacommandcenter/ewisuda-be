@@ -16,6 +16,11 @@ return Application::configure(basePath: dirname(__DIR__))
     $middleware->alias([
         'role' => \App\Http\Middleware\CheckRole::class,
     ]);
+    // Mengatur CORS agar mengizinkan frontend Vue mengunduh/membaca file dari storage
+    $middleware->statefulApi();
+    $middleware->validateCsrfTokens(except: [
+        '*'
+    ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
